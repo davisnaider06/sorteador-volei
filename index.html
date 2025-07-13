@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sorteador de Times de Vôlei</title>
+  <style>
+    :root {
+      --bg-light: #f0f0f0;
+      --text-light: #333;
+      --bg-dark: #1e1e1e;
+      --text-dark: #eee;
+      --primary: #007bff;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: var(--bg-light);
+      color: var(--text-light);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    body.dark {
+      background: var(--bg-dark);
+      color: var(--text-dark);
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    body.dark .container {
+      background: #2a2a2a;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      font-size: 1.8em;
+    }
+
+    input, select, button {
+      padding: 10px;
+      margin: 5px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .form-section, .config-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 15px 0;
+    }
+
+    .players ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .players li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #ccc;
+      padding: 6px 0;
+    }
+
+    .teams {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .team {
+      flex: 1;
+      min-width: 250px;
+      background: #e6f0ff;
+      padding: 10px;
+      border-radius: 6px;
+    }
+
+    .team h3 {
+      margin: 0 0 10px;
+    }
+
+    .dark .team {
+      background: #334;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🏐 Sorteador de Times</h1>
+      <button onclick="toggleTheme()">🌙/🌞</button>
+    </header>
+
+    <section class="form-section">
+      <input type="text" id="playerName" placeholder="Nome do jogador">
+      <select id="playerLevel">
+        <option value="1">1 - Iniciante</option>
+        <option value="2">2</option>
+        <option value="3">3 - Intermediário</option>
+        <option value="4">4</option>
+        <option value="5">5 - Avançado</option>
+      </select>
+      <button onclick="addPlayer()">+ Adicionar</button>
+    </section>
+
+    <section class="config-section">
+      <label>Qtd. de times:
+        <select id="teamCount">
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </label>
+
+      <label>Modo:
+        <select id="sortMode">
+          <option value="balanced">Equilibrado</option>
+          <option value="random">Aleatório</option>
+        </select>
+      </label>
+
+      <button onclick="drawTeams()">🔀 Sortear</button>
+    </section>
+
+    <section class="players">
+      <h2>Jogadores cadastrados</h2>
+      <ul id="playerList"></ul>
+    </section>
+
+    <section class="teams" id="teamsContainer"></section>
+  </div>
+
+  <script>
+    let players = JSON.parse(localStorage.getItem('players')) || [];
+
+    function savePlayers() {
+      localStorage.setItem('players', JSON.stringify(players));
+    }
+
+    function renderPlayers() {
+      const list = document.getElementById('playerList');
+      list.innerHTML = players.map((p, i) => `
+        <li>
+          ${p.name} (Nível: ${p.level})
+          <span>
+            <button onclick="editPlayer(${i})">✏️</button>
+            <button onclick="removePlayer(${i})">❌</button>
+          </span>
+        </li>
+      `).join('');
+    }
+
+    function addPlayer() {
+      const name = document.getElementById('playerName').value.trim();
+      const level = parseInt(document.getElementById('playerLevel').value);
+      if (!name || level < 1 || level > 5) return alert("Dados inválidos.");
+      players.push({ name, level });
+      savePlayers();
+      renderPlayers();
+      document.getElementById('playerName').value = "";
+    }
+
+    function removePlayer(index) {
+      players.splice(index, 1);
+      savePlayers();
+      renderPlayers();
+    }
+
+    function editPlayer(index) {
+      const newName = prompt("Novo nome:", players[index].name);
+      const newLevel = parseInt(prompt("Novo nível (1-5):", players[index].level));
+      if (newName && newLevel >= 1 && newLevel <= 5) {
+        players[index] = { name: newName, level: newLevel };
+        savePlayers();
+        renderPlayers();
+      }
+    }
+
+    function drawTeams() {
+      const count = parseInt(document.getElementById('teamCount').value);
+      const mode = document.getElementById('sortMode').value;
+      const container = document.getElementById('teamsContainer');
+      container.innerHTML = "";
+      if (players.length < count) return alert("Jogadores insuficientes.");
+
+      let shuffled = [...players];
+      if (mode === 'random') shuffled.sort(() => 0.5 - Math.random());
+      else shuffled.sort((a, b) => b.level - a.level);
+
+      const teams = Array.from({ length: count }, () => []);
+      for (const p of shuffled) {
+        if (mode === 'balanced') teams.sort((a, b) => sumLevel(a) - sumLevel(b));
+        teams.find(t => t.length === Math.min(...teams.map(x => x.length))).push(p);
+      }
+
+      teams.forEach((team, i) => {
+        const total = sumLevel(team);
+        const avg = (total / team.length).toFixed(1);
+        container.innerHTML += `
+          <div class="team">
+            <h3>Time ${i + 1}</h3>
+            <p>Total: ${total} | Média: ${avg}</p>
+            <ul>${team.map(p => `<li>${p.name} (Nível ${p.level})</li>`).join('')}</ul>
+          </div>
+        `;
+      });
+    }
+
+    function sumLevel(team) {
+      return team.reduce((sum, p) => sum + p.level, 0);
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle("dark");
+    }
+
+    renderPlayers();
+  </script>
+</body>
+</html>
